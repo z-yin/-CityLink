@@ -239,7 +239,7 @@ freq_calc = FrequencyCalculator(wv, nclass=nclass, keywords=keywords, th=0.8)
 
 # ### Main run part
 
-# In[140]:
+# In[142]:
 
 
 # frequency = {i: 0 for i in range(1, nclass + 1)}  # final frequency
@@ -261,6 +261,10 @@ for document in my_corpus:
         for j in range(i+1,len(current_city_list)):
             if (current_city_list[i], current_city_list[j]) in city_link:
                 city_link[(current_city_list[i], current_city_list[j])] += _freq
+            if (current_city_list[j], current_city_list[i]) in city_link:
+                city_link[(current_city_list[j], current_city_list[i])] += _freq
+
+print(frequency)
 
 with open('results/city_link_frequency.csv', "w") as f:
     writer = csv.writer(f, delimiter=',')
@@ -271,7 +275,7 @@ with open('results/city_link_frequency.csv', "w") as f:
 end = time.time()
 
 
-# In[141]:
+# In[143]:
 
 
 print('{} documents (websites) in total. {} (avg: {}) seconds elapsed.'.format(cnt, end - start, (end - start) / cnt))
