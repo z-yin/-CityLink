@@ -257,18 +257,18 @@ for document in my_corpus:
     frequency += _freq
     # update city_link
     current_city_list = list(set(document["cities"]))
-    for i in range(len(current_city_list)-1):
-        for j in range(i+1,len(current_city_list)):
+    for i in range(len(current_city_list)): # combine "A-B" and "B-A" city pairs
+        for j in range(len(current_city_list)):
             if (current_city_list[i], current_city_list[j]) in city_link:
                 city_link[(current_city_list[i], current_city_list[j])] += _freq
             if (current_city_list[j], current_city_list[i]) in city_link:
                 city_link[(current_city_list[j], current_city_list[i])] += _freq
 
-print(frequency)
+print(frequency) # total frequency
 
 with open('results/city_link_frequency.csv', "w") as f:
     writer = csv.writer(f, delimiter=',')
-    writer.writerow(('City1','City2','经济','科技','法律','文学','娱乐','第二产业','农业'))
+    writer.writerow(('City1','City2','经济','科技','法律','文学','娱乐','第二产业','农业')) # first row as header
     for key, value in city_link.items():
         writer.writerow((key[0], key[1], value[0], value[1], value[2], value[3], value[4], value[5], value[6]))
     
@@ -382,7 +382,7 @@ else: # Expand the existing keywords by finding words in the embedding file that
     start = time.time()
     for i, category in enumerate(keywords, 1):
         for key in category:
-            if key not in repeated_keys:
+            if key not in repeated_keys: # get most similar words to keys whose similarity > threshold
                 expanded_keywords[i-1].append(key)
                 closest = wv.most_similar(key)
                 for sim_pair in closest:
