@@ -139,10 +139,6 @@ class FrequencyCalculator:
 
 # In[4]:
 
-
-class FrequencyConverter
-
-
 # ### Load the dictionary
 
 # In[11]:
@@ -212,156 +208,6 @@ with open('resources/keywords.csv') as f:
             if category != '' and category in wv:
                 keywords[i].append(category)
 
-
-# ### City Links
-
-# In[139]:
-
-
-# get city links
-city_l = list(city_list)
-city_link = {}
-for i in range(len(city_l)-1):
-    for j in range(i+1,len(city_l)):
-        city_link[(city_l[i], city_l[j])] = np.array([0 for _ in range(expanded_nclass)]) # easy to add up
-city_link[('郴州', '许昌')]
-
-
-# ### Instantiate the corpus and frequency calculator
-
-# In[120]:
-
-
-file_list = [f for f in os.listdir('../webdata') if f.startswith('part-')][:1]
-my_corpus = MyCorpus('../webdata/', file_list, dictionary, stop_list, city_list)
-freq_calc = FrequencyCalculator(wv, nclass=nclass, keywords=keywords, th=0.8)
-
-
-# ### Main run part
-
-# In[142]:
-
-
-# frequency = {i: 0 for i in range(1, nclass + 1)}  # final frequency
-frequency = np.array([0 for _ in range(expanded_nclass)]) # easy to add up
-
-start = time.time()
-
-cnt = 0
-for document in my_corpus:
-    if cnt > 18000:
-        break
-    cnt += 1
-    _freq = freq_calc.calc_given_keywords(document["words"], expanded_keywords)
-    # update final frequency
-    frequency += _freq
-    # update city_link
-    current_city_list = list(set(document["cities"]))
-    for i in range(len(current_city_list)): # combine "A-B" and "B-A" city pairs
-        for j in range(len(current_city_list)):
-            if (current_city_list[i], current_city_list[j]) in city_link:
-                city_link[(current_city_list[i], current_city_list[j])] += _freq
-            if (current_city_list[j], current_city_list[i]) in city_link:
-                city_link[(current_city_list[j], current_city_list[i])] += _freq
-
-print(frequency) # total frequency
-
-with open('results/city_link_frequency.csv', "w") as f:
-    writer = csv.writer(f, delimiter=',')
-    writer.writerow(('City1','City2','经济','科技','法律','文学','娱乐','第二产业','农业')) # first row as header
-    for key, value in city_link.items():
-        writer.writerow((key[0], key[1], value[0], value[1], value[2], value[3], value[4], value[5], value[6]))
-    
-end = time.time()
-
-
-# In[143]:
-
-
-print('{} documents (websites) in total. {} (avg: {}) seconds elapsed.'.format(cnt, end - start, (end - start) / cnt))
-
-
-# ### Cluster the keywords with k-means
-
-# In[ ]:
-
-
-keys = []
-for cate in keywords:
-    keys.extend(cate)
-print(keys)
-
-X = np.array([wv[k] for k in keys])
-kmeans = KMeans(n_clusters=7, random_state=0, verbose=1).fit(X)
-# kmeans.labels_[:]
-
-
-# ### Use t-SNE to project vectors on a 2-D plane
-
-# In[ ]:
-
-
-# Scale and visualize the embedding vectors
-def plot_embedding(X, title=None):
-    x_min, x_max = np.min(X, 0), np.max(X, 0)
-    X = (X - x_min) / (x_max - x_min)
-
-    plt.figure()
-    ax = plt.subplot(111)
-    for i in range(X.shape[0]):
-        plt.text(X[i, 0], X[i, 1], str(y[i]),
-                 color=plt.cm.Set1(y[i] / 10.),
-                 fontdict={'weight': 'bold', 'size': 9})
-
-    if hasattr(offsetbox, 'AnnotationBbox'):
-        # only print thumbnails with matplotlib > 1.0
-        shown_images = np.array([[1., 1.]])  # just something big
-        for i in range(X.shape[0]):
-            dist = np.sum((X[i] - shown_images) ** 2, 1)
-            if np.min(dist) < 4e-3:
-                # don't show points that are too close
-                continue
-            shown_images = np.r_[shown_images, [X[i]]]
-            imagebox = offsetbox.AnnotationBbox(
-                offsetbox.OffsetImage(digits.images[i], cmap=plt.cm.gray_r),
-                X[i])
-            ax.add_artist(imagebox)
-    plt.xticks([]), plt.yticks([])
-    if title is not None:
-        plt.title(title)
-
-
-# In[ ]:
-
-
-X_embedded = TSNE(n_components=2).fit_transform(X)
-X_embedded.shape
-
-
-# ### Find a Common Threshold
-
-# In[40]:
-
-
-max_similarity = -1
-repeated_keys = []
-for i in range(6):
-    for key in keywords[i]:
-        for j in range(i+1,7):
-            for oppo_key in keywords[j]:
-                if key != oppo_key:
-                    if wv.similarity(key, oppo_key) > max_similarity:
-                        max_similarity = wv.similarity(key, oppo_key)
-                        key1 = key
-                        key2 = oppo_key
-                else:
-                    repeated_keys.append(key)
-repeated_keys = set(repeated_keys) # used for later to filter repeated keywords
-midpoint = (wv[key1] + wv[key2])/2 # middle vector of the two words
-threshold = wv.most_similar(positive=[midpoint])[0][1]
-print(threshold)
-
-
 # ### Get an Expanded Keywords List Based on the Thresold)
 
 # In[133]:
@@ -396,28 +242,69 @@ else: # Expand the existing keywords by finding words in the embedding file that
             writer.writerow(category)
 
 
-# #### Scratch (not important)
+# ### City Links
 
-# <!-- 1. Dictionary -->
-# <!-- 2. Stop words -->
-# <!-- 3. Remove without city -->
-# <!-- 4. Store city links -->
-# 5. Count words related with different category
-
-# In[11]:
+# In[139]:
 
 
-[i for i in wv.similar_by_word('中国', 100) if '中国' not in i[0]]
+# get city links
+city_l = list(city_list)
+city_link = {}
+for i in range(len(city_l)-1):
+    for j in range(i+1,len(city_l)):
+        city_link[(city_l[i], city_l[j])] = np.array([0 for _ in range(expanded_nclass)]) # easy to add up
+#city_link[('郴州', '许昌')]
 
 
-# In[15]:
+# ### Instantiate the corpus and frequency calculator
+
+# In[120]:
 
 
-wv.similarity('拓荒者', '中国')
+file_list = [f for f in os.listdir('../webdata') if f.startswith('part-')][:] #:1]
+my_corpus = MyCorpus('../webdata/', file_list, dictionary, stop_list, city_list)
+freq_calc = FrequencyCalculator(wv, nclass=nclass, keywords=keywords, th=0.8)
 
 
-# In[ ]:
+# ### Main run part
+
+# In[142]:
 
 
+# frequency = {i: 0 for i in range(1, nclass + 1)}  # final frequency
+frequency = np.array([0 for _ in range(expanded_nclass)]) # easy to add up
+
+start = time.time()
+
+#cnt = 0
+for document in my_corpus:
+#    if cnt > 18000:
+#        break
+#    cnt += 1
+    _freq = freq_calc.calc_given_keywords(document["words"], expanded_keywords)
+    # update final frequency
+    frequency += _freq
+    # update city_link
+    current_city_list = list(set(document["cities"]))
+    for i in range(len(current_city_list)): # combine "A-B" and "B-A" city pairs
+        for j in range(len(current_city_list)):
+            if (current_city_list[i], current_city_list[j]) in city_link:
+                city_link[(current_city_list[i], current_city_list[j])] += _freq
+            if (current_city_list[j], current_city_list[i]) in city_link:
+                city_link[(current_city_list[j], current_city_list[i])] += _freq
+
+print(frequency) # total frequency
+
+with open('results/city_link_frequency.csv', "w") as f:
+    writer = csv.writer(f, delimiter=',')
+    writer.writerow(('City1','City2','经济','科技','法律','文学','娱乐','第二产业','农业')) # first row as header
+    for key, value in city_link.items():
+        writer.writerow((key[0], key[1], value[0], value[1], value[2], value[3], value[4], value[5], value[6]))
+    
+end = time.time()
 
 
+# In[143]:
+
+
+print('{} documents (websites) in total. {} (avg: {}) seconds elapsed.'.format(cnt, end - start, (end - start) / cnt))
