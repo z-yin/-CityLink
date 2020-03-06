@@ -228,14 +228,14 @@ else: # Expand the existing keywords by finding words in the embedding file that
     start = time.time()
     for i, category in enumerate(keywords, 1):
         for key in category:
-            if key not in repeated_keys: # get most similar words to keys whose similarity > threshold
-                expanded_keywords[i-1].append(key)
-                closest = wv.most_similar(key)
-                for sim_pair in closest:
-                    if sim_pair[1] > 0.8:
-                        expanded_keywords[i-1].append(sim_pair[0])
-                    else:
-                        break
+            # get most similar words to keys whose similarity > threshold
+            expanded_keywords[i-1].append(key)
+            closest = wv.most_similar(key)
+            for sim_pair in closest:
+                if sim_pair[1] > 0.8:
+                    expanded_keywords[i-1].append(sim_pair[0])
+                else:
+                    break
     with open('resources/expanded_keywords.csv', "w") as f:
         writer = csv.writer(f, delimiter=',')
         for category in expanded_keywords:
