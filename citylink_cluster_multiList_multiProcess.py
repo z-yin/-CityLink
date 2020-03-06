@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+
 import os
 import csv
 import time
@@ -22,8 +23,8 @@ from itertools import repeat, islice # itertools.islice, for slicing generators
 # ## Number of Cores
 
 
-NCORE = input("Enter Number of Processes")
-NUM_FILES = input("Enter Number of Files")
+NCORE = 8 #input("Enter Number of Processes")
+NUM_FILES = 8 #input("Enter Number of Files")
 
 
 # ## Parallel Process Function
@@ -54,13 +55,12 @@ def parallel_process(document, city_link, expanded_keywords):
                     city_link[(cities[j], cities[i])] += _freq
     return city_link
 
-
 # # Main
 
 # #### File List
 
 
-file_list = [f for f in os.listdir('../webdata') if f.startswith('part-')][:1]
+file_list = [f for f in os.listdir('../webdata') if f.startswith('part-')]
 
 
 # #### Dictionary
@@ -132,7 +132,7 @@ wv.vectors_norm = wv.vectors  # prevent recalc of normed vectors
 
 
 if 'expanded_keywords.csv' not in os.listdir('resources'):
-    print('saving expanded keywords.csv...')
+    print('saving expanded keywords...')
     # Expand the existing keywords by finding words in the embedding file that are above the threshold
     '''load keywords'''
     nclass = 7
@@ -184,6 +184,7 @@ else:
 
 
 print('loading {} files...'.format(NUM_FILES))
+start = time.time()
 documents = [] # [document[[words],[cities]]]
 jieba.enable_parallel(NCORE)
 for filename in file_list[:NUM_FILES]:
@@ -218,21 +219,23 @@ for filename in file_list[:NUM_FILES]:
             cities = list(set(cities)) # get unique cities
             if len(cities) < 2:  # less than 2 cities won't composite a link
                 continue
+            all_doc += 1
             document.append(words)
             document.append(cities)
             documents.append(document)
 jieba.disable_parallel()
+print('Get {} websites from {} files after {} seconds'.format(len(documents), NUM_FILES, time.time()-start))
 
 
 # ### Main Run Part
 
 
 # Initialise City Link
-city_link = {}
+city_link_multi = {}
 expanded_nclass = len(expanded_keywords)
 for i in range(len(city_list)-1):
     for j in range(i+1,len(city_list)):
-        city_link[(city_list[i], city_list[j])] = np.array([0 for _ in range(expanded_nclass)]) # easy to add up
+        city_link_multi[(city_list[i], city_list[j])] = np.array([0 for _ in range(expanded_nclass)]) # easy to add up
 
 start = time.time()
 NDOC = len(documents)//NCORE # num_documents_per_process
@@ -240,20 +243,24 @@ NDOC = len(documents)//NCORE # num_documents_per_process
 print('Start {} processes...'.format(NCORE))
 # Instantiate the pool here
 pool = mp.Pool(processes=NCORE)
-result = pool.starmap_async(parallel_process, zip(documents, repeat(city_link), repeat(expanded_keywords)), NDOC)
+result = pool.starmap_async(parallel_process, zip(documents, repeat(city_link_multi), repeat(expanded_keywords)), NDOC)
 pool.close()
 pool.join()
 
 result = result.get()
 
-print('Get individual result from each process after {} seconds elapsed.'.format(NCORE, time.time() - start))
+print('Get individual result from {} process after {} seconds elapsed.'.format(NCORE, time.time() - start))
 
-for key in city_link.keys():
-    saved_previous = np.array([-1 for _ in range(expanded_nclass)])
-    for i, res in enumerate(result):
-        if not np.array_equal(saved_previous,res[key]):
-            saved_previous = res[key]
-            city_link[key] += res[key]
+city_link_multi = result[0]
+for key in city_link_multi.keys():
+    key_used_to_remove_duplicate_dict = key
+    break
+saved_previous = city_link_multi[key_used_to_remove_duplicate_dict]
+for res in result:
+    if not np.array_equal(saved_previous, res[key_used_to_remove_duplicate_dict]):
+        saved_previous = res[key_used_to_remove_duplicate_dict]
+        for key in city_link_multi.keys():
+            city_link_multi[key] += res[key]
 
 print('Get final results after {} seconds elapsed.'.format(time.time() - start))
 
@@ -261,10 +268,6 @@ print('Saving...')
 with open('results/city_link_frequency_multiThreads.csv', "w") as f:
     writer = csv.writer(f, delimiter=',')
     writer.writerow(('City1','City2','经济','科技','法律','文学','娱乐','第二产业','农业')) # first row as header
-    for key, value in city_link.items():
+    for key, value in city_link_multi.items():
         writer.writerow((key[0], key[1], value[0], value[1], value[2], value[3], value[4], value[5], value[6]))
 print('Done.')
-
-
-
-
