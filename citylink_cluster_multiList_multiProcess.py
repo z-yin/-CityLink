@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
 import os
 import csv
 import time
@@ -24,16 +21,12 @@ from itertools import repeat, islice # itertools.islice, for slicing generators
 
 # ## Number of Cores
 
-# In[188]:
-
 
 NCORE = input("Enter Number of Processes")
 NUM_FILES = input("Enter Number of Files")
 
 
 # ## Parallel Process Function
-
-# In[189]:
 
 
 def calc_given_keywords(words, expanded_nclass, expanded_keywords):
@@ -44,9 +37,6 @@ def calc_given_keywords(words, expanded_nclass, expanded_keywords):
             if word in category:
                 freq[i-1] += 1 # -1 for the right index
     return freq
-
-
-# In[190]:
 
 
 def parallel_process(document, city_link, expanded_keywords):
@@ -69,15 +59,11 @@ def parallel_process(document, city_link, expanded_keywords):
 
 # #### File List
 
-# In[191]:
-
 
 file_list = [f for f in os.listdir('../webdata') if f.startswith('part-')][:1]
 
 
 # #### Dictionary
-
-# In[192]:
 
 
 print('loading dictionary...')
@@ -100,8 +86,6 @@ print(dictionary)
 
 # #### Stop List
 
-# In[193]:
-
 
 stop_list = []
 with open('resources/stopwords_zh.txt') as f:
@@ -111,8 +95,6 @@ stop_list = set(stop_list)
 
 
 # #### City List
-
-# In[194]:
 
 
 city_list = []
@@ -129,10 +111,9 @@ city_list = list(set(city_list))
 
 # #### Save 'Bin_Tencent_AILab_ChineseEmbedding.bin' in '../embedding'
 
-# In[195]:
-
 
 if 'Bin_Tencent_AILab_ChineseEmbedding.bin' not in os.listdir('../embedding'):
+    print('saving word embeddings...')
     embedding_file = '../embedding/Tencent_AILab_ChineseEmbedding.txt'
     wv = KeyedVectors.load_word2vec_format(embedding_file, binary=False)
     wv.init_sims(replace=True)
@@ -140,8 +121,6 @@ if 'Bin_Tencent_AILab_ChineseEmbedding.bin' not in os.listdir('../embedding'):
 
 
 # #### Load Word Embeddings
-
-# In[ ]:
 
 
 print('loading word embeddings...')
@@ -151,10 +130,9 @@ wv.vectors_norm = wv.vectors  # prevent recalc of normed vectors
 
 # #### Save 'expanded_keywords.csv' in 'resources'
 
-# In[ ]:
-
 
 if 'expanded_keywords.csv' not in os.listdir('resources'):
+    print('saving expanded keywords.csv...')
     # Expand the existing keywords by finding words in the embedding file that are above the threshold
     '''load keywords'''
     nclass = 7
@@ -187,10 +165,8 @@ if 'expanded_keywords.csv' not in os.listdir('resources'):
 
 # #### Load Expanded Keywords
 
-# In[ ]:
 
-
-print('loading keywords...')
+print('loading expanded keywords...')
 if 'expanded_keywords.csv' in os.listdir('resources'): # already expanded, load from saved
     expanded_nclass = 7
     expanded_keywords = [[] for _ in range(expanded_nclass)]
@@ -205,8 +181,6 @@ else:
 
 
 # #### Get Documents
-
-# In[ ]:
 
 
 print('loading {} files...'.format(NUM_FILES))
@@ -250,34 +224,7 @@ for filename in file_list[:NUM_FILES]:
 jieba.disable_parallel()
 
 
-# #### mp.manager (slow)/mp.pool.apply_async (serial) if used
-
-# In[ ]:
-
-
-# manager = mp.Manager()
-# documents_ref = manager.list(documents)
-# city_link_ref = manager.dict(city_link)
-# expanded_keywords_ref = manager.list(expanded_keywords)
-
-## Instantiate the pool here
-# pool = mp.Pool(processes=NCORE)
-# pool.apply_async(parallel_process, (documents_ref[(NCORE-1)*NDOC:], 
-#                                     city_link_ref, expanded_keywords_ref))
-# for core in range(NCORE-1):
-#     pool.apply_async(parallel_process, (documents_ref[core*NDOC:(core+1)*NDOC],
-#                                         city_link_ref, expanded_keywords_ref))
-
-# results = [pool.apply_async(parallel_process, (documents[core*NDOC:(core+1)*NDOC], 
-#                                                city_link, expanded_keywords)).get() 
-#            if core < NCORE-1 else pool.apply_async(parallel_process, (documents[(NCORE-1)*NDOC:], 
-#                                     city_link, expanded_keywords)).get()
-#           for core in range(NCORE)]
-
-
 # ### Main Run Part
-
-# In[ ]:
 
 
 # Initialise City Link
@@ -317,9 +264,6 @@ with open('results/city_link_frequency_multiThreads.csv', "w") as f:
     for key, value in city_link.items():
         writer.writerow((key[0], key[1], value[0], value[1], value[2], value[3], value[4], value[5], value[6]))
 print('Done.')
-
-
-# In[ ]:
 
 
 
